@@ -163,23 +163,7 @@ def main() -> None:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"  D-Bus unit path : {unit_path}")
-    print(f"  cgroup (systemd): {cgroup_rel}")
-    print()
-
     tree = read_cgroup_tree(cgroup_rel)
-
-    print("cgroup tree:")
-    print_tree(tree)
-    print()
-
-    all_pids = collect_all_pids(tree)
-    if all_pids:
-        print(f"All PIDs ({len(all_pids)} total):")
-        for pid in sorted(set(all_pids)):
-            print(f"  {get_process_info(pid)}")
-    else:
-        print("No PIDs found (service may be inactive or cgroup is empty).")
 
 
 if __name__ == "__main__":
