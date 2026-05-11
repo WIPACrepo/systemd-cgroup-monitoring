@@ -3,6 +3,7 @@ from cgroup_tree import CgroupTree
 import argparse
 import os
 from datetime import timedelta, datetime
+from typing import List, Dict
 
 DATEFMT="%a %d %b %Y, %I:%M%p"
 OK=0
@@ -10,7 +11,7 @@ WARN=1
 CRIT=2
 UNKNOWN=3
 
-def get_processes(tree: dict, services: list[str], processes: list[str]) -> dict:
+def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict:
     """
     Returns child service node to monitor
     """
@@ -72,30 +73,25 @@ def checkmk_output(name, unit, slices, processes, user):
 
     monitored = get_processes(service.tree, slices, processes)
 
-    print(monitored)
-
     checkmk_message = ""
 
-    print(monitored.keys())
+    if service.active_state  == "active":
+        checkmk_message += f"""{OK} "{name}" is active\n"""
+        for key in monitored.keys():
+            if len(monitored[key]) > 0:
+                for procs in monitored[key]:
+                    for n in procs.keys():
+                        up_seconds = get_process_uptime(procs[n]['pid'])
+                        since = datetime.now() - up_seconds
+                        uptime = pretty_time_delta(up_seconds.seconds)
+                        checkmk_message += f"""{OK} "{name} - {key}" PID ({procs[n]['pid']}) up since {since.strftime(DATEFMT)} ({uptime})\n"""
+            else:
+                checkmk_message += f"""{CRIT} "{name} - {key}" no PID found"""
 
-    match service.active_state:
-        case "active":
-            checkmk_message += f"""{OK} "{name}" is active\n"""
-            for key in monitored.keys():
-                if len(monitored[key]) > 0:
-                    for procs in monitored[key]:
-                        for n in procs.keys():
-                            up_seconds = get_process_uptime(procs[n]['pid'])
-                            since = datetime.now() - up_seconds
-                            uptime = pretty_time_delta(up_seconds.seconds)
-                            checkmk_message += f"""{OK} "{name} - {key}" PID ({procs[n]['pid']}) up since {since.strftime(DATEFMT)} ({uptime})\n"""
-                else:
-                    checkmk_message += f"""{CRIT} "{name} - {key}" no PID found"""
-
-        case "failed":
-            checkmk_message += f"""{CRIT} "{name}" is failed"""
-        case _:
-            checkmk_message += f"""{UNKNOWN} "{name}" state is not active or failed"""
+    elif service.active_state == "failed":
+        checkmk_message += f"""{CRIT} "{name}" is failed"""
+    else:
+        checkmk_message += f"""{UNKNOWN} "{name}" state is not active or failed"""
 
 
     return checkmk_message

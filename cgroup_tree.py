@@ -12,6 +12,7 @@ import sys
 import os
 import dbus
 from datetime import timedelta
+from typing import List, Dict
 
 class CgroupTree:
     """
@@ -28,7 +29,7 @@ class CgroupTree:
         self.properties: dbus.Interface =  self._get_interface_properties()
         self.active_state: str = self.properties.Get("org.freedesktop.systemd1.Unit", "ActiveState")
         self.load_state: str = self.properties.Get("org.freedesktop.systemd1.Unit", "LoadState")
-        self.tree: dict = self._read_cgroup_tree(
+        self.tree: Dict = self._read_cgroup_tree(
             self._get_cgroup_path(),
         )
 
@@ -64,7 +65,7 @@ class CgroupTree:
         return str(cgroup)
 
 
-    def _read_cgroup_tree(self, cgroup_rel_path) -> dict:
+    def _read_cgroup_tree(self, cgroup_rel_path) -> Dict:
         """
         Walk the cgroup v2 filesystem (or v1 systemd hierarchy) and build a tree.
 
@@ -97,7 +98,7 @@ class CgroupTree:
 
         return self._walk_cgroup(base)
 
-    def _read_pids(self, cgroup_dir: str) -> list[int]:
+    def _read_pids(self, cgroup_dir: str) -> List[int]:
         """Read PIDs from cgroup.procs in a cgroup directory."""
         procs_file = os.path.join(cgroup_dir, "cgroup.procs")
         if not os.path.isfile(procs_file):
@@ -108,7 +109,7 @@ class CgroupTree:
         except PermissionError:
             return []
 
-    def _walk_cgroup(self, path: str) -> dict:
+    def _walk_cgroup(self, path: str) -> Dict:
         """Recursively walk a cgroup directory."""
         node = {
             "path": path,
@@ -128,13 +129,13 @@ class CgroupTree:
 
         return node
 
-    def _build_process_info(self, path: str) -> list[dict]:
+    def _build_process_info(self, path: str) -> List[Dict]:
         entries = []
         for pid in self._read_pids(path):
             entries.append({'pid': pid, "cmd": self._get_process_cmdline(pid)})
         return entries
 
-    def print_tree(self, node: dict = None, indent: int = 0) -> None:
+    def print_tree(self, node: Dict = None, indent: int = 0) -> None:
         """Pretty-print the cgroup tree."""
         if node is None:
             node = self.tree
@@ -165,7 +166,7 @@ class CgroupTree:
         except (FileNotFoundError, PermissionError):
             return f"<unavailable>"
 
-    def _collect_all_pids(self, node: dict) -> list[int]:
+    def _collect_all_pids(self, node: Dict) -> List[int]:
         pids = list(node["pids"])
         for child in node.get("children", []):
             pids.extend(self.collect_all_pids(child))
