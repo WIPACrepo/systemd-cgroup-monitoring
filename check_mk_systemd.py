@@ -13,7 +13,7 @@ UNKNOWN=3
 
 def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict:
     """
-    Returns child service node to monitor
+    Returns child service processes to monitor
     """
     matched = {}
 
@@ -78,14 +78,12 @@ def checkmk_output(name, unit, slices, processes, user):
 
     checkmk_message = ""
 
-    print(monitored)
     if service.active_state  == "active":
         checkmk_message += f"""{OK} "{name}" is active\n"""
         for slice in monitored.keys():
             if len(monitored[slice]) > 0:
                 checkmk_message += f"""{OK} "{name} - {slice}" """
                 for proc in monitored[slice]:
-                    print(proc)
                     up_seconds = get_process_uptime(proc['pid'])
                     since = datetime.now() - up_seconds
                     uptime = pretty_time_delta(up_seconds.seconds)
@@ -166,7 +164,5 @@ if __name__ == "__main__":
     unit = args.unit
     services = args.slice_services if len(args.slice_services) else [unit]
     processes = args.processes
-
-    print("here we go: ", name, unit, services, processes)
 
     print(checkmk_output(name, unit, services, processes, args.user))
