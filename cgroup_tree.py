@@ -146,8 +146,8 @@ class CgroupTree:
             proc_list = []
             for proc in node['pids']:
                 proc_list.append(f"{str(proc['cmd'])} - PID ({proc['pid']})")
-
-            pid_str = " " + f",\n{" " * (len(prefix + path_label) + 1)}".join(proc_list)
+            padding = " " * (len(prefix + path_label) + 1)
+            pid_str = " " + f",\n{padding}".join(proc_list)
         else :
             pid_str = pid_str + ""
         error_str = f"{node['error']}" if "error" in node else ""

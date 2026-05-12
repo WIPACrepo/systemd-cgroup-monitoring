@@ -22,13 +22,17 @@ def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict
             name = os.path.basename(obj['path'])
             for s in services:
                 if s in name:
-                    matched[name] = []
+                    slice = []
+                    slice_name = name.split('.')[0]
                     for proc in obj['pids']:
                         if len(processes) == 0:
                             """We don't care about which processes in the service to monitor, so monitor them all """
-                            matched[name].append({name.split('.')[0]: proc})
+                            slice.append(proc)
                         else:
-                            map(lambda x: matched[name].append({x: proc}) if x in proc['cmd'] else None, processes)
+                           if is_matched_processes(proc['cmd'], processes):
+                               slice.append(proc)
+
+                    matched[slice_name] = slice
             _recurse(obj['children'])
         elif isinstance(obj, list):
             for item in obj:
@@ -37,6 +41,12 @@ def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict
     _recurse(tree)
     return matched
 
+def is_matched_processes(cmd: str, processes: list[str]) -> bool:
+    for proc in processes:
+        if cmd in proc:
+            return True
+
+    return False
 
 def get_process_uptime(pid):
     """"""
@@ -75,18 +85,21 @@ def checkmk_output(name, unit, slices, processes, user):
 
     checkmk_message = ""
 
+    print(monitored)
     if service.active_state  == "active":
         checkmk_message += f"""{OK} "{name}" is active\n"""
-        for key in monitored.keys():
-            if len(monitored[key]) > 0:
-                for procs in monitored[key]:
-                    for n in procs.keys():
-                        up_seconds = get_process_uptime(procs[n]['pid'])
-                        since = datetime.now() - up_seconds
-                        uptime = pretty_time_delta(up_seconds.seconds)
-                        checkmk_message += f"""{OK} "{name} - {key}" PID ({procs[n]['pid']}) up since {since.strftime(DATEFMT)} ({uptime})\n"""
+        for slice in monitored.keys():
+            if len(monitored[slice]) > 0:
+                checkmk_message += f"""{OK} "{name} - {slice}" """
+                for proc in monitored[slice]:
+                    print(proc)
+                    up_seconds = get_process_uptime(proc['pid'])
+                    since = datetime.now() - up_seconds
+                    uptime = pretty_time_delta(up_seconds.seconds)
+                    checkmk_message += f"""`{proc['cmd']}` ({proc['pid']}) up since {since.strftime(DATEFMT)} ({uptime}); """
+                checkmk_message += "\n"
             else:
-                checkmk_message += f"""{CRIT} "{name} - {key}" no PID found"""
+                checkmk_message += f"""{CRIT} "{name} - {slice}" no PID found"""
 
     elif service.active_state == "failed":
         checkmk_message += f"""{CRIT} "{name}" is failed"""
