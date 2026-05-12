@@ -20,19 +20,19 @@ def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict
     def _recurse(obj):
         if isinstance(obj, dict):
             name = os.path.basename(obj['path'])
-            for s in services:
-                if s in name:
-                    slice = []
-                    slice_name = name.split('.')[0]
-                    for proc in obj['pids']:
-                        if len(processes) == 0:
-                            """We don't care about which processes in the service to monitor, so monitor them all """
-                            slice.append(proc)
-                        else:
-                           if is_matched_processes(proc['cmd'], processes):
-                               slice.append(proc)
 
-                    matched[slice_name] = slice
+            if any(sub in name for sub in services):
+                slice = []
+                slice_name = name.split('.')[0]
+                for proc in obj['pids']:
+                    if len(processes) == 0:
+                        """We don't care about which processes in the service to monitor, so monitor them all """
+                        slice.append(proc)
+                    else:
+                        if any(sub in proc['cmd'] for sub in processes):
+                            slice.append(proc)
+
+                matched[slice_name] = slice
             _recurse(obj['children'])
         elif isinstance(obj, list):
             for item in obj:
@@ -40,13 +40,6 @@ def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict
 
     _recurse(tree)
     return matched
-
-def is_matched_processes(cmd: str, processes: list[str]) -> bool:
-    for proc in processes:
-        if cmd in proc:
-            return True
-
-    return False
 
 def get_process_uptime(pid):
     """"""
@@ -146,7 +139,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--slice-services",
-        nargs='+',
+        nargs="+",
+        action="extend",
+        type=str,
         default=[],
         help="""
             List of slice services to the parents service to monitor
@@ -155,7 +150,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--processes",
-        nargs='+',
+        nargs="+",
+        action="extend",
+        type=str,
         default=[],
         help="""
             List of commands to search for in child processes of the systemd service unit to monitor. If none are provided
@@ -167,7 +164,9 @@ if __name__ == "__main__":
 
     name = args.name_override if args.name_override else args.unit
     unit = args.unit
-    services = args.slice_services if len(args.slice_services) > 0 else unit
+    services = args.slice_services if len(args.slice_services) else [unit]
     processes = args.processes
+
+    print("here we go: ", name, unit, services, processes)
 
     print(checkmk_output(name, unit, services, processes, args.user))
