@@ -88,7 +88,6 @@ def checkmk_output(name, unit, slices, processes, user):
                     since = datetime.now() - up_seconds
                     uptime = pretty_time_delta(up_seconds.seconds)
                     checkmk_message += f"""`{proc['cmd']}` ({proc['pid']}) up since {since.strftime(DATEFMT)} ({uptime}); """
-                checkmk_message += "\n"
             else:
                 checkmk_message += f"""{CRIT} "{name} - {slice}" no PID found"""
 
