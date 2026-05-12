@@ -41,8 +41,10 @@ def get_processes(tree: Dict, services: list[str], processes: list[str]) -> Dict
     _recurse(tree)
     return matched
 
-def get_process_uptime(pid):
-    """"""
+def get_process_uptime(pid: int) -> timedelta:
+    """
+    Return process uptime timedelta
+    """
     with open(f"/proc/{pid}/stat") as f:
         fields = f.read().split()
 
@@ -57,7 +59,7 @@ def get_process_uptime(pid):
     uptime_seconds = system_uptime - process_start_seconds
     return timedelta(seconds=uptime_seconds)
 
-def pretty_time_delta(seconds):
+def pretty_time_delta(seconds: int) -> str:
     seconds = int(seconds)
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
@@ -69,9 +71,12 @@ def pretty_time_delta(seconds):
     elif minutes > 0:
         return '%dm%ds' % (minutes, seconds)
     else:
-        return '%ds' % (seconds,)
+        return '%ds' % (seconds)
 
-def checkmk_output(name, unit, slices, processes, user):
+def checkmk_output(name: str, unit: str, slices: list[str], processes: list[str]) -> str:
+    """
+    Print checkMK formated output message
+    """
     service = CgroupTree(unit, user)
 
     monitored = get_processes(service.tree, slices, processes)
@@ -164,4 +169,4 @@ if __name__ == "__main__":
     services = args.slice_services if len(args.slice_services) else [unit]
     processes = args.processes
 
-    print(checkmk_output(name, unit, services, processes, args.user))
+    print(checkmk_output(name, unit, services, processes))
