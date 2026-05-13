@@ -73,7 +73,7 @@ def pretty_time_delta(seconds: int) -> str:
     else:
         return '%ds' % (seconds)
 
-def checkmk_output(name: str, unit: str, slices: list[str], processes: list[str]) -> str:
+def checkmk_output(name: str, unit: str, slices: list[str], processes: list[str], user: str) -> str:
     """
     Print checkMK formated output message
     """
