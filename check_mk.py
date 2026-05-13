@@ -82,27 +82,30 @@ def checkmk_output(name: str, unit: str, slices: list[str], processes: list[str]
     monitored = get_processes(service.tree, slices, processes)
 
     checkmk_message = ""
+    code = UNKNOWN
 
     if service.active_state  == "active":
-        checkmk_message += f"""{OK} "{name}" is active\n"""
         for slice in monitored.keys():
             if len(monitored[slice]) > 0:
-                checkmk_message += f"""{OK} "{name} - {slice}" """
+                code = OK
                 for proc in monitored[slice]:
                     up_seconds = get_process_uptime(proc['pid'])
                     since = datetime.now() - up_seconds
                     uptime = pretty_time_delta(up_seconds.seconds)
                     checkmk_message += f"""`{proc['cmd']}` ({proc['pid']}) up since {since.strftime(DATEFMT)} ({uptime}); """
             else:
-                checkmk_message += f"""{CRIT} "{name} - {slice}" no PID found"""
+                checkmk_message = f"""no PIDs found"""
+                code = CRIT
 
     elif service.active_state == "failed":
-        checkmk_message += f"""{CRIT} "{name}" is failed"""
+        checkmk_message = f""""{name}" unit is failed"""
+        code = CRIT
     else:
-        checkmk_message += f"""{UNKNOWN} "{name}" state is not active or failed"""
+        checkmk_message = f""""{name}" unit state is not active or failed"""
+        code = UNKNOWN
 
-
-    return checkmk_message
+    print(checkmk_message)
+    exit(code)
 
 
 if __name__ == "__main__":
@@ -169,4 +172,4 @@ if __name__ == "__main__":
     services = args.slice_services if len(args.slice_services) else [unit]
     processes = args.processes
 
-    print(checkmk_output(name, unit, services, processes))
+    checkmk_output(name, unit, services, processes, args.user)
