@@ -183,25 +183,19 @@ def check_mk(name: str, unit: str, slices: list[str], processes: list[str], user
     print(checkmk_message)
     exit(code)
 
-def node_exporter(name: str, unit: str, slices: list[str], processes: list[str], user: str, textfile_dir: str = "") -> str:
+def node_exporter(name: str, unit: str, slices: list[str], processes: list[str], user: str) -> str:
     """
-    Write service health output to file for Node exporter via the --collector.textfile.directory flag
+    Write service health output for Node exporter via the --collector.textfile.directory flag
     """
-    outdir = Path(textfile_dir) if textfile_dir != "" else Path("/var/lib/node_exporter")
-
-    if not os.path.exists(outdir):
-        print(f"Error: output dir \"{outdir}\" does not exist")
 
     service = CgroupTree(unit, user)
 
     monitored = get_processes(service.tree, slices, processes)
 
     prometheus_metrics = {key: {"active": 0, "failed": 0, "unknown": 1} for key in slices}
-    print(prometheus_metrics)
 
     if service.active_state  == "active":
         for slice in monitored.keys():
-            print(slice)
             if len(monitored[slice]) > 0:
                 prometheus_metrics[slice]['active'] = 1
                 prometheus_metrics[slice]['unknown'] = 0
@@ -209,14 +203,12 @@ def node_exporter(name: str, unit: str, slices: list[str], processes: list[str],
                     prometheus_metrics[slice]['failed'] = 1
                     prometheus_metrics[slice]['unknown'] = 0
 
-    with open(outdir / "systemd_service.prom", "w") as f:
-        f.write(
-            f"# HELP systemd_service_status Current status for a systmed service slice\n"
-            f"# TYPE systemd_service_status gauge\n"
-        )
+        print("# HELP systemd_service_status Current status for a systmed service slice")
+        print("# TYPE systemd_service_status gauge")
+
         for slice in prometheus_metrics.keys():
             for state in prometheus_metrics[slice].keys():
-                f.write(f"systemd_service_status{{state=\"{state}\", service=\"{slice}\"}} {prometheus_metrics[slice][state]}\n")
+                print(f"systemd_service_status{{state=\"{state}\", service=\"{slice}\"}} {prometheus_metrics[slice][state]}")
 
 
 if __name__ == "__main__":
@@ -245,14 +237,6 @@ if __name__ == "__main__":
             how to format output
             Valid options: {check_mk, node_exporter}
             """
-    )
-
-    parser.add_argument(
-        "--textfile-directory",
-        type=str,
-        help="""
-            Directory to dump files for node_exporter textfile collector
-            """,
     )
 
     parser.add_argument(
@@ -307,7 +291,7 @@ if __name__ == "__main__":
         check_mk(name, unit, services, processes, args.user)
 
     if exporter == "node_exporter":
-        node_exporter(name, unit, services, processes, args.user, args.textfile_directory)
+        node_exporter(name, unit, services, processes, args.user)
 
     #checkmk_output(name, unit, services, processes, args.user)
     #emitter = EmitterClass()
